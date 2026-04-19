@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { addDoc, collection } from "firebase/firestore";
 import { Button, Text, View } from "react-native";
-import { db } from "../src/services/firebase.js"; // ajuste se necessário
+import { db } from "../../src/services/firebase.js"; // ajuste se necessário
 
 const router = useRouter();
 

@@ -9,7 +9,7 @@ import {
     where
 } from "firebase/firestore";
 
-import { db } from "../src/services/firebase";
+import { db } from "../../src/services/firebase";
 
 export default function Historico() {
 

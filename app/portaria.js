@@ -1,4 +1,4 @@
-import { BarCodeScanner } from "expo-barcode-scanner";
+//import { BarCodeScanner } from "expo-barcode-scanner";
 import { useEffect, useState } from "react";
 import { Button, Text, View } from "react-native";
 
@@ -6,6 +6,10 @@ import { doc, getDoc, Timestamp, updateDoc } from "firebase/firestore";
 import { db } from "../src/services/firebase";
 
 export default function Portaria() {
+
+  
+  return null; // temporário
+
 
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button, Text, TextInput, View } from "react-native";
 
 import { addDoc, collection, Timestamp } from "firebase/firestore";
-import { db } from "../src/services/firebase";
+import { db } from "../../src/services/firebase";
 
 export default function NovaSolicitacao() {
 
