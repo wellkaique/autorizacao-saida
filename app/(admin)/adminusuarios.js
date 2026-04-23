@@ -3,7 +3,7 @@ import { doc, setDoc } from "firebase/firestore"
 import { useState } from "react"
 import { Button, Text, TextInput, View } from "react-native"
 
-import { auth, db } from "../src/services/firebase.js"
+import { auth, db } from "../../src/services/firebase.js"
 
 export default function Admin() {
 

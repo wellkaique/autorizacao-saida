@@ -29,6 +29,33 @@ export default function Login() {
   const router = useRouter();
 
   const handleLogin = async () => {
+  if (!matricula || !senha) {
+    alert("Preencha todos os campos");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const q = query(
+      collection(db, "usuarios"),
+      where("matricula", "==", matricula)
+    );
+
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      alert("Matrícula não encontrada");
+      return;
+    }
+
+    // ✅ DEFINE AQUI
+    const userData = querySnapshot.docs[0].data();
+    const email = userData.email;
+
+    await signInWithEmailAndPassword(auth, email, senha);
+
+    // ✅ USA AQUI (dentro do try)
     if (userData.perfil === "empregado") {
       router.replace("/(empregado)/home");
     } else if (userData.perfil === "gestor") {
@@ -39,48 +66,13 @@ export default function Login() {
       router.replace("/(admin)/home");
     }
 
-    try {
-      setLoading(true);
-
-      const q = query(
-        collection(db, "usuarios"),
-        where("matricula", "==", matricula)
-      );
-
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        alert("Matrícula não encontrada");
-        return;
-      }
-
-      const userData = querySnapshot.docs[0].data();
-      const email = userData.email;
-
-      if (!email) {
-        alert("Usuário sem email cadastrado");
-        return;
-      }
-
-      await signInWithEmailAndPassword(auth, email, senha);
-
-      // Navegação
-      router.replace("/(tabs)/home");
-
-    } catch (error) {
-      console.log(error);
-
-      if (error.code === "auth/wrong-password") {
-        alert("Senha incorreta");
-      } else if (error.code === "auth/user-not-found") {
-        alert("Usuário não encontrado");
-      } else {
-        alert("Erro ao fazer login");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    console.log(error);
+    alert("Erro ao fazer login");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <KeyboardAvoidingView

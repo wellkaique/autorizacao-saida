@@ -6,9 +6,12 @@ import { Button, Text, TextInput, View } from "react-native";
 import { addDoc, collection, Timestamp } from "firebase/firestore";
 import { db } from "../../src/services/firebase";
 
+
 export default function NovaSolicitacao() {
 
-  const [matricula] = useState("1617");
+
+  const [matricula, setMatricula] = useState("");
+  
 
   const [tipo, setTipo] = useState("");
   const [motivo, setMotivo] = useState("");
