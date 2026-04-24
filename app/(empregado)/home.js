@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { signOut } from "firebase/auth";
 import {
   StyleSheet,
   Text,
@@ -9,8 +10,26 @@ import {
 export default function Home() {
   const router = useRouter();
 
+  const handleLogout = async () => {
+  try {
+    await signOut(auth);
+
+    router.replace("/login"); // volta pro login
+
+  } catch (error) {
+    console.log(error);
+    Alert.alert("Erro ao sair");
+  }
+  };
+
   return (
     <View style={styles.container}>
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={handleLogout}
+      >
+      <Text style={styles.logoutText}>Sair</Text>
+      </TouchableOpacity>
 
       {/* Header */}
       <View style={styles.header}>
@@ -102,4 +121,18 @@ const styles = StyleSheet.create({
     color: "#333",
     fontWeight: "bold",
   },
+
+  logoutButton: {
+  position: "absolute",
+  top: 40,
+  right: 20,
+  backgroundColor: "#dc3545",
+  padding: 10,
+  borderRadius: 8,
+},
+
+logoutText: {
+  color: "#fff",
+  fontWeight: "bold",
+},
 });

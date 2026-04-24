@@ -10,52 +10,79 @@ import {
 } from "react-native";
 
 import { collection, addDoc } from "firebase/firestore";
-import { auth,db } from "../../src/services/firebase";
+import { auth, db } from "../../src/services/firebase";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 export default function NovaSolicitacao() {
 
   const [motivo, setMotivo] = useState("");
-  const [dataSaida, setDataSaida] = useState("");
-  const [horaSaida, setHoraSaida] = useState("");
+  const [data, setData] = useState(new Date());
+  const [hora, setHora] = useState(new Date());
+  const [observacao, setObservacao] = useState("");
+
+  const [mostrarData, setMostrarData] = useState(false);
+  const [mostrarHora, setMostrarHora] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
+  const motivos = [
+    "Saída antecipada",
+    "Serviço externo",
+    "Entrada após horario",
+    "Esquecimento de registro de ponto de entrada",
+    "Esquecimento de registro de ponto de sáida",
+    "Abono de falta",
+  ];
+
+  const onChangeData = (event, selectedDate) => {
+    setMostrarData(false);
+    if (selectedDate) setData(selectedDate);
+  };
+
+  const onChangeHora = (event, selectedTime) => {
+    setMostrarHora(false);
+    if (selectedTime) setHora(selectedTime);
+  };
+
   const handleSubmit = async () => {
 
-    // 🔐 Validação
-    if (!motivo || !dataSaida || !horaSaida) {
-      Alert.alert("Erro", "Preencha todos os campos");
+    if (!motivo) {
+      Alert.alert("Erro", "Selecione um motivo");
       return;
     }
 
     try {
       setLoading(true);
+
       const user = auth.currentUser;
 
-       if (!user) {
+      if (!user) {
         Alert.alert("Erro", "Usuário não está logado");
         return;
-       }
+      }
+
       await addDoc(collection(db, "solicitacoes"), {
         userId: user.uid,
         email: user.email,
         motivo,
-        dataSaida,
-        horaSaida,
+        dataSaida: data.toISOString().split("T")[0],
+        horaSaida: hora.toTimeString().slice(0, 5),
+        observacao,
         status: "pendente",
         criadoEm: new Date()
       });
 
       Alert.alert("Sucesso", "Solicitação enviada!");
 
-      // limpar campos
+      // RESET CORRETO
       setMotivo("");
-      setDataSaida("");
-      setHoraSaida("");
+      setData(new Date());
+      setHora(new Date());
+      setObservacao("");
 
     } catch (error) {
       console.log(error);
-      Alert.alert("Erro", "Não foi possível enviar");
+      Alert.alert("Erro ao enviar");
     } finally {
       setLoading(false);
     }
@@ -66,34 +93,82 @@ export default function NovaSolicitacao() {
 
       <Text style={styles.title}>Nova Solicitação</Text>
 
-      {/* Motivo */}
+      {/* MOTIVOS */}
       <Text style={styles.label}>Motivo</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex: Consulta médica"
-        value={motivo}
-        onChangeText={setMotivo}
-      />
+      <View style={styles.motivosContainer}>
+        {motivos.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.motivoButton,
+              motivo === item && styles.motivoSelecionado
+            ]}
+            onPress={() => setMotivo(item)}
+          >
+            <Text
+              style={[
+                styles.motivoText,
+                motivo === item && styles.motivoTextSelecionado
+              ]}
+            >
+              {item}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-      {/* Data */}
+      {/* DATA */}
       <Text style={styles.label}>Data da saída</Text>
-      <TextInput
+      <TouchableOpacity
         style={styles.input}
-        placeholder="YYYY-MM-DD"
-        value={dataSaida}
-        onChangeText={setDataSaida}
-      />
+        onPress={() => setMostrarData(true)}
+      >
+        <Text>{data.toLocaleDateString("pt-BR")}</Text>
+      </TouchableOpacity>
 
-      {/* Hora */}
+      {mostrarData && (
+        <DateTimePicker
+          value={data}
+          mode="date"
+          display="default"
+          onChange={onChangeData}
+        />
+      )}
+
+      {/* HORA */}
       <Text style={styles.label}>Hora da saída</Text>
-      <TextInput
+      <TouchableOpacity
         style={styles.input}
-        placeholder="HH:MM"
-        value={horaSaida}
-        onChangeText={setHoraSaida}
+        onPress={() => setMostrarHora(true)}
+      >
+        <Text>
+          {hora.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit"
+          })}
+        </Text>
+      </TouchableOpacity>
+
+      {mostrarHora && (
+        <DateTimePicker
+          value={hora}
+          mode="time"
+          display="default"
+          onChange={onChangeHora}
+        />
+      )}
+
+      {/* OBSERVAÇÃO */}
+      <Text style={styles.label}>Observação (opcional)</Text>
+      <TextInput
+        style={[styles.input, { height: 80 }]}
+        placeholder="Detalhes adicionais..."
+        value={observacao}
+        onChangeText={setObservacao}
+        multiline
       />
 
-      {/* Botão */}
+      {/* BOTÃO */}
       <TouchableOpacity
         style={styles.button}
         onPress={handleSubmit}
@@ -122,9 +197,8 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    marginBottom: 5,
+    marginBottom: 8,
     fontWeight: "600",
-    color: "#333",
   },
 
   input: {
@@ -136,12 +210,38 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
   },
 
+  motivosContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 15,
+  },
+
+  motivoButton: {
+    backgroundColor: "#e9ecef",
+    padding: 10,
+    borderRadius: 8,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+
+  motivoSelecionado: {
+    backgroundColor: "#007bff",
+  },
+
+  motivoText: {
+    color: "#333",
+  },
+
+  motivoTextSelecionado: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+
   button: {
     backgroundColor: "#007bff",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
-    marginTop: 10,
   },
 
   buttonText: {

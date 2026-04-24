@@ -1,207 +1,251 @@
-import { Picker } from "@react-native-picker/picker";
-import Checkbox from "expo-checkbox";
 import { useState } from "react";
-import { Button, Text, TextInput, View } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ScrollView
+} from "react-native";
 
-import { addDoc, collection, Timestamp } from "firebase/firestore";
-import { db } from "../../src/services/firebase";
-
+import { collection, addDoc } from "firebase/firestore";
+import { auth, db } from "../../src/services/firebase";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 export default function NovaSolicitacao() {
 
-
-  const [matricula, setMatricula] = useState("");
-  
-
-  const [tipo, setTipo] = useState("");
   const [motivo, setMotivo] = useState("");
+  const [data, setData] = useState(new Date());
+  const [hora, setHora] = useState(new Date());
   const [observacao, setObservacao] = useState("");
 
-  // hora extra
-  const [tipoExtra, setTipoExtra] = useState("");
-  const [horaInicio, setHoraInicio] = useState("");
-  const [horaFim, setHoraFim] = useState("");
+  const [mostrarData, setMostrarData] = useState(false);
+  const [mostrarHora, setMostrarHora] = useState(false);
 
-  // recursos
-  const [rota, setRota] = useState(false);
-  const [alimentacao, setAlimentacao] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const solicitar = async () => {
+  const motivos = [
+    "Saída antecipada",
+    "Serviço externo",
+    "Entrada após horario",
+    "Esquecimento de registro de ponto de entrada",
+    "Esquecimento de registro de ponto de sáida",
+    "Abono de falta",
+  ];
+
+  const onChangeData = (event, selectedDate) => {
+    setMostrarData(false);
+    if (selectedDate) setData(selectedDate);
+  };
+
+  const onChangeHora = (event, selectedTime) => {
+    setMostrarHora(false);
+    if (selectedTime) setHora(selectedTime);
+  };
+
+  const handleSubmit = async () => {
+
+    if (!motivo) {
+      Alert.alert("Erro", "Selecione um motivo");
+      return;
+    }
+
     try {
+      setLoading(true);
 
-      if (!tipo) {
-        alert("Selecione o tipo de solicitação");
+      const user = auth.currentUser;
+
+      if (!user) {
+        Alert.alert("Erro", "Usuário não está logado");
         return;
       }
 
-      let dados = {
-        matricula: matricula,
-        tipo: tipo,
-        observacao: observacao,
+      await addDoc(collection(db, "solicitacoes"), {
+        userId: user.uid,
+        email: user.email,
+        motivo,
+        dataSaida: data.toISOString().split("T")[0],
+        horaSaida: hora.toTimeString().slice(0, 5),
+        observacao,
         status: "pendente",
-        data: Timestamp.now(),
+        criadoEm: new Date()
+      });
 
-        // garante consistência
-        rota: tipo === "hora_extra" ? rota : false,
-        alimentacao: tipo === "hora_extra" ? alimentacao : false
-      };
+      Alert.alert("Sucesso", "Solicitação enviada!");
 
-      // SAÍDA
-      if (tipo === "saida") {
-        if (!motivo) {
-          alert("Selecione um motivo");
-          return;
-        }
-
-        dados.subtipo = motivo;
-      }
-
-      // HORA EXTRA
-      if (tipo === "hora_extra") {
-        if (!tipoExtra || !horaInicio || !horaFim) {
-          alert("Preencha os dados da hora extra");
-          return;
-        }
-
-        dados.subtipo = tipoExtra;
-        dados.hora_inicio = horaInicio;
-        dados.hora_fim = horaFim;
-      }
-
-      await addDoc(collection(db, "solicitacoes"), dados);
-
-      alert("Solicitação enviada!");
-
-      // limpar tudo
-      setTipo("");
+      // RESET CORRETO
       setMotivo("");
+      setData(new Date());
+      setHora(new Date());
       setObservacao("");
-      setTipoExtra("");
-      setHoraInicio("");
-      setHoraFim("");
-      setRota(false);
-      setAlimentacao(false);
 
     } catch (error) {
       console.log(error);
-      alert("Erro ao enviar");
+      Alert.alert("Erro ao enviar");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={{ padding: 20 }}>
+    <ScrollView contentContainerStyle={styles.container}>
 
-      <Text style={{ fontSize: 24, marginBottom: 20 }}>
-        Nova Solicitação
-      </Text>
+      <Text style={styles.title}>Nova Solicitação</Text>
 
-      {/* TIPO */}
-      <Text>Tipo de solicitação</Text>
-
-      <Picker
-        selectedValue={tipo}
-        onValueChange={(value) => {
-          setTipo(value);
-
-          // limpa recursos se não for hora extra
-          if (value !== "hora_extra") {
-            setRota(false);
-            setAlimentacao(false);
-          }
-        }}
-        style={{ marginBottom: 20 }}
-      >
-        <Picker.Item label="Selecione" value="" />
-        <Picker.Item label="Saída / Ocorrência" value="saida" />
-        <Picker.Item label="Hora extra" value="hora_extra" />
-      </Picker>
-
-      {/* SAÍDA */}
-      {tipo === "saida" && (
-        <>
-          <Text>Motivo</Text>
-
-          <Picker
-            selectedValue={motivo}
-            onValueChange={(value) => setMotivo(value)}
-            style={{ marginBottom: 20 }}
+      {/* MOTIVOS */}
+      <Text style={styles.label}>Motivo</Text>
+      <View style={styles.motivosContainer}>
+        {motivos.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.motivoButton,
+              motivo === item && styles.motivoSelecionado
+            ]}
+            onPress={() => setMotivo(item)}
           >
-            <Picker.Item label="Selecione o motivo" value="" />
-            <Picker.Item label="Saída serviço externo" value="saida_servico_externo" />
-            <Picker.Item label="Entrada após horário" value="entrada_apos_horario" />
-            <Picker.Item label="Esquecimento de ponto entrada" value="esquecimento_ponto_entrada" />
-            <Picker.Item label="Esquecimento de ponto saída" value="esquecimento_ponto_saida" />
-            <Picker.Item label="Abono de falta" value="abono_falta" />
-          </Picker>
-        </>
+            <Text
+              style={[
+                styles.motivoText,
+                motivo === item && styles.motivoTextSelecionado
+              ]}
+            >
+              {item}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* DATA */}
+      <Text style={styles.label}>Data da saída</Text>
+      <TouchableOpacity
+        style={styles.input}
+        onPress={() => setMostrarData(true)}
+      >
+        <Text>{data.toLocaleDateString("pt-BR")}</Text>
+      </TouchableOpacity>
+
+      {mostrarData && (
+        <DateTimePicker
+          value={data}
+          mode="date"
+          display="default"
+          onChange={onChangeData}
+        />
       )}
 
-      {/* HORA EXTRA */}
-      {tipo === "hora_extra" && (
-        <>
-          <Text>Tipo de hora extra</Text>
+      {/* HORA */}
+      <Text style={styles.label}>Hora da saída</Text>
+      <TouchableOpacity
+        style={styles.input}
+        onPress={() => setMostrarHora(true)}
+      >
+        <Text>
+          {hora.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit"
+          })}
+        </Text>
+      </TouchableOpacity>
 
-          <Picker
-            selectedValue={tipoExtra}
-            onValueChange={(value) => setTipoExtra(value)}
-            style={{ marginBottom: 20 }}
-          >
-            <Picker.Item label="Selecione" value="" />
-            <Picker.Item label="Hora extra normal" value="hora_extra_normal" />
-            <Picker.Item label="Extra (dia inteiro)" value="extra_dia" />
-          </Picker>
-
-          <Text>Hora início</Text>
-          <TextInput
-            placeholder="Ex: 18:00"
-            value={horaInicio}
-            onChangeText={setHoraInicio}
-            style={{ borderWidth: 1, marginBottom: 10 }}
-          />
-
-          <Text>Hora fim</Text>
-          <TextInput
-            placeholder="Ex: 22:00"
-            value={horaFim}
-            onChangeText={setHoraFim}
-            style={{ borderWidth: 1, marginBottom: 20 }}
-          />
-
-          {/* RECURSOS */}
-          <Text>Recursos necessários</Text>
-
-          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 10 }}>
-            <Checkbox value={rota} onValueChange={setRota} />
-            <Text style={{ marginLeft: 8 }}>
-              Preciso de rota (transporte)
-            </Text>
-          </View>
-
-          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 10 }}>
-            <Checkbox value={alimentacao} onValueChange={setAlimentacao} />
-            <Text style={{ marginLeft: 8 }}>
-              Preciso de alimentação
-            </Text>
-          </View>
-        </>
+      {mostrarHora && (
+        <DateTimePicker
+          value={hora}
+          mode="time"
+          display="default"
+          onChange={onChangeHora}
+        />
       )}
 
       {/* OBSERVAÇÃO */}
-      <Text style={{ marginTop: 20 }}>Observação</Text>
-
+      <Text style={styles.label}>Observação (opcional)</Text>
       <TextInput
-        placeholder="Opcional"
+        style={[styles.input, { height: 80 }]}
+        placeholder="Detalhes adicionais..."
         value={observacao}
         onChangeText={setObservacao}
-        style={{
-          borderWidth: 1,
-          marginBottom: 20,
-          padding: 10
-        }}
+        multiline
       />
 
-      <Button title="Enviar Solicitação" onPress={solicitar} />
+      {/* BOTÃO */}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleSubmit}
+        disabled={loading}
+      >
+        <Text style={styles.buttonText}>
+          {loading ? "Enviando..." : "Enviar Solicitação"}
+        </Text>
+      </TouchableOpacity>
 
-    </View>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    backgroundColor: "#f4f6f8",
+    flexGrow: 1,
+  },
+
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+  },
+
+  label: {
+    marginBottom: 8,
+    fontWeight: "600",
+  },
+
+  input: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+
+  motivosContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 15,
+  },
+
+  motivoButton: {
+    backgroundColor: "#e9ecef",
+    padding: 10,
+    borderRadius: 8,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+
+  motivoSelecionado: {
+    backgroundColor: "#007bff",
+  },
+
+  motivoText: {
+    color: "#333",
+  },
+
+  motivoTextSelecionado: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+
+  button: {
+    backgroundColor: "#007bff",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+});
